@@ -1,8 +1,11 @@
 {
   "dependencies": {
+    "ejs": "^3.1.8",
     "express": "^4.18.2",
-    "mongoose": "^6.8.0",
-    "node": "^19.2.0"
+    "jsonwebtoken": "^9.0.0",
+    "mysql2": "^2.3.3",
+    "node": "^19.2.0",
+    "sequelize": "^6.28.0"
   },
   "name": "sparta_blog",
   "version": "1.0.0",
@@ -14,5 +17,16 @@
   "author": "",
   "license": "ISC",
   "keywords": [],
-  "type": "commonjs"
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rookas33/Sparta_Blog.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rookas33/Sparta_Blog/issues"
+  },
+  "homepage": "https://github.com/rookas33/Sparta_Blog#readme",
+  "devDependencies": {
+    "sequelize-cli": "^6.5.2"
+  }
 }

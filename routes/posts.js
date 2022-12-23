@@ -1,39 +1,44 @@
 const express = require("express");
 const router = express.Router();
-const Posts = require("../schemas/postsSchema");
+const { Post } = require("../models");
+const { User } = require("../models");
+
+const authMiddleware = require("../middlewares/auth-middleware");
+const { where } = require("sequelize");
 
 
 // 게시글 작성 API
-router.post('/', async (req, res) => {
-    const { user, password, title, content } = req.body;
-    if (!user || !password || !title || !content) {
+router.post('/', authMiddleware, async (req, res) => {
+    const { title, content } = req.body;
+    const { nickname } = res.locals.user;
+    if (!title || !content) {
         return res.json({
             message: "데이터 형식이 올바르지 않습니다"
         });
     };
-    await Posts.create({ user, password, title, content });
+    await Post.create({ nickname, title, content });
     res.json({ message: "게시글을 생성했습니다" })
 });
 
-// 게시글 조회 API
+// 게시글 목록 조회 API // attributes
 router.get('/', async (req, res) => {
-    const posts = await Posts.find({}, { password: false, content: false, __v: false })
+    const posts = await Post.findAll({ attributes: ['postId', 'nickname', 'title', 'like'], });
     res.status(200).json({ posts })
-    console.log(posts)
 });
 
-// 게시글 상세 조회 API
+// 게시글 조회 API
 router.get('/:_postId', async (req, res) => {
     try {
         const { _postId } = req.params;
-        const posts = await Posts.findOne({ _id: _postId }, { password: false, __v: false })
-        if (!posts) {
+        const post = await Post.findOne({ where: { postId: _postId } });
+
+        if (!post) {
             return res.json({ message: "없는 게시물 입니다." })
         }
-        res.status(200).json({ posts })
+        res.status(200).json({ post })
     } catch (err) {
         const { _postId } = req.params;
-        if (_postId.length != 24) {
+        if (_postId.length) {
             return res.status(500).json({ message: "게시글 조회에 실패하였습니다." })
         }
         res.status(500).json({ error: err.message })
@@ -42,27 +47,25 @@ router.get('/:_postId', async (req, res) => {
 });
 
 // 게시글 수정 API
-router.put('/:_postId', async (req, res) => {
-
+router.put('/:_postId', authMiddleware, async (req, res) => {
     try {
-        const { password, title, content } = req.body;
+        const { title, content } = req.body;
         const { _postId } = req.params;
-        const posts = await Posts.findOne({ _id: _postId }, { __v: false })
-        if (!password || !title || !content) {
+        const post = await Post.findOne({ where: { postId: _postId } });
+        if (!title || !content) {
             return res.status(400).json({ message: "데이터 형식이 올바르지 않습니다." })
         }
-        if (password != posts.password) {
-            return res.status(400).json({ message: "올바른 비밀번호를 입력해 주세요" })
-        }
-        await Posts.updateOne(
-            { _id: _postId },
-            { $set: { title: title, content: content } }
+
+        await Post.update(
+            { title: title, content: content },
+            { where: { postId: _postId } }
         )
 
 
     } catch (err) {
+        console.log(err.message)
         const { _postId } = req.params;
-        if (_postId.length != 24) {
+        if (_postId.length) {
             return res.status(500).json({ message: "게시글 조회에 실패하였습니다." })
         }
         res.status(500).json({ error: err.message })
@@ -74,22 +77,23 @@ router.put('/:_postId', async (req, res) => {
 
 
 // 게시글 삭제 API
-router.delete('/:_postId', async (req, res) => {
+router.delete('/:_postId', authMiddleware, async (req, res) => {
     try {
-        const { password } = req.body;
+        const { nickname, password } = req.body;
         const { _postId } = req.params;
-        const posts = await Posts.findOne({ _id: _postId })
-        if (!password) {
+
+        const user = await User.findOne({ where: { nickname: nickname, password: password } })
+
+        if (!nickname || !password) {
             return res.status(400).json({ message: "데이터 형식이 올바르지 않습니다." })
         }
-        if (password != posts.password) {
-            return res.status(400).json({ message: "올바른 비밀번호를 입력해 주세요" })
+        if (password !== user.password || nickname !== user.nickname) {
+            return res.status(400).json({ message: "올바른 비밀번호와 닉네임을 입력해 주세요" })
         }
-        await Posts.deleteOne({ _id: _postId }
-        )
+        await Post.destroy({ where: { postId: _postId } })
     } catch (err) {
         const { _postId } = req.params;
-        if (_postId.length != 24) {
+        if (_postId.length) {
             return res.status(500).json({ message: "게시글 조회에 실패하였습니다." })
         }
         res.status(500).json({ error: err.message })
@@ -97,6 +101,18 @@ router.delete('/:_postId', async (req, res) => {
     res.status(200).json({ message: "게시글을 삭제했습니다" })
 
 });
+
+// 게시글 좋아요
+router.put("/:_postId/like", authMiddleware, async (req, res) => {
+    const { _postId } = req.params;
+    console.log(_postId)
+    await Post.increment({ like: 1 }, { where: { postId: _postId } });
+
+
+    res.status(200).json({ message: "좋아요를 눌렀습니다!" })
+});
+
+
 
 
 module.exports = router;
